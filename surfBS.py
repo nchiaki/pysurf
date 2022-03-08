@@ -138,13 +138,9 @@ def surf(url, cntnt=""):
     try:
         resp = urllib.request.urlopen(requrl)
     except Exception:
-        print(' X {dlttime(bftm)}'.format(bftm))
+        print(' X {}'.format(dlttime(bftm)))
         if 0 < tabs:
             tabs -= 1
-        return;
-
-    except HTTPError:
-        pass
         return;
 
     for html in cntntAttrs:
