@@ -143,6 +143,10 @@ def surf(url, cntnt=""):
             tabs -= 1
         return;
 
+    except HTTPError:
+        pass
+        return;
+
     for html in cntntAttrs:
         ix = requrl.rfind(html)
         if (0 <= ix):
