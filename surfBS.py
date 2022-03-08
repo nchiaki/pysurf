@@ -68,9 +68,9 @@ def tabspace(tabs):
     return tabstr
 
 def mk_hash(requrl):
-    hash = hashlib.shake_128()
+    hash = hashlib.sha1()
     hash.update(requrl.encode())
-    tag = hash.hexdigest(32)
+    tag = hash.hexdigest()
     return tag
 
 visitedUrls = []
