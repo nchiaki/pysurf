@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 #   coding: utf-8
 
+import argparse
 import urllib.request
 import urllib.parse
 from bs4 import BeautifulSoup
@@ -8,12 +9,18 @@ import time
 import sys
 import socket
 import hashlib
+import threading as thrd
+from multiprocessing import Process
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 
 #strurl = 'https://chiaki.sakura.ne.jp'
-strurl = 'https://www.miharu.co.jp'
-
-tabs = 0
+#strurl = 'https://www.miharu.co.jp'
 maxtabs = 16
+maxofthread = 128
+maxofprocs = 6
+numofprcs = 0
+exectr = None
 
 serchHrefs = ('href="', 'HREF="')
 serchHttps = ('http://', 'https://')
@@ -93,10 +100,20 @@ def visitor_registration(requrl):
     else:
         visitedUrls.append(requrl)
 
+def waitForEveryone2Join(thrdtbl):
+    global numofprcs
+    while thrdtbl:
+        thrdtbl.pop().join()
+        if 0 < numofprcs:
+            numofprcs -= 1
 
-def surf(url, cntnt=""):
-    global tabs
-    global maxtabs
+def surf(url, level, multi, cntnt=""):
+    global maxtabs, exectr, numofprcs
+    logline = ''
+
+    thrdtbl = []
+
+    tabs = level
 
     if maxtabs <= tabs:
         return
@@ -104,6 +121,7 @@ def surf(url, cntnt=""):
     ignr = ignor_domain(url)
     if 0 < len(ignr):
         print('Ignor:{} server is {}'.format(url,ignr))
+        return
 
     if 0 < len(cntnt) and '#' in cntnt:
         return
@@ -125,11 +143,14 @@ def surf(url, cntnt=""):
         #print(', So ignor.')
         return
 
-    print('{}{}:'.format(tabstr,tabs), end='')
+    #print('{}{}:'.format(tabstr,tabs), end='')
+    logline = '{}{}:'.format(tabstr,tabs)
     if len(cntnt) == 0:
-        print('[{}]'.format(url), end='', flush=True)
+        #print('[{}]'.format(url), end='', flush=True)
+        logline += '[{}]'.format(url)
     else:
-        print('[{}]/[{}]'.format(url,cntnt), end='', flush=True)
+        #print('[{}]/[{}]'.format(url,cntnt), end='', flush=True)
+        logline += '[{}]/[{}]'.format(url,cntnt)
 
     visitor_registration(requrl)
     tabs += 1
@@ -137,10 +158,12 @@ def surf(url, cntnt=""):
     bftm = time.time()
     try:
         resp = urllib.request.urlopen(requrl)
-    except Exception:
-        print(' X {}'.format(dlttime(bftm)))
+    except Exception as er:
+        #print(' X {}:{}'.format(dlttime(bftm),er))
+        logline += ' X {}:{}'.format(dlttime(bftm),er)
         if 0 < tabs:
             tabs -= 1
+        print(logline)
         return;
 
     for html in cntntAttrs:
@@ -154,9 +177,11 @@ def surf(url, cntnt=""):
         contnt = BeautifulSoup(resp, features='html.parser')
     except:
         resp.close()
-        print(' X {dlttime(bftm)}'.format(bftm))
+        #print(' X {}:{}'.format(dlttime(bftm)))
+        logline += ' X {}:{}'.format(dlttime(bftm))
         if 0 < tabs:
             tabs -= 1
+        print(logline)
         return;
 
     atags = contnt.find_all('a')
@@ -183,7 +208,8 @@ def surf(url, cntnt=""):
 
     resp.close()
 
-    print(' {}'.format(dlttime(bftm)))
+    #print(' {}'.format(dlttime(bftm)))
+    logline += ' {}'.format(dlttime(bftm))
 
     for tagstr in tagstrs:
         if len(tagstr):
@@ -221,23 +247,83 @@ def surf(url, cntnt=""):
             else:
                 nxturl = nxturl.rstrip('/')
 
+            if multi == 'thrd':
+                thrdtbl.append(thrd.Thread(target=surf, args=[nxturl, tabs, multi, nxtcntnt]))
+                thrdtbl[-1].start()
+                pass
+            elif multi == 'prcs':
+                try:
+                    proc = Process(target=surf, args=[nxturl, tabs, multi, nxtcntnt])
+                except:
+                    #print('Process fail:{}'.format(nxturl))
+                    logline += 'Process fail:{}'.format(nxturl)
+                    print(logline)
+                    continue
+                if proc:
+                    thrdtbl.append(proc)
+                    numofprcs += 1
+                    thrdtbl[-1].start()
+                    if (maxofprocs <= numofprcs):
+                        waitForEveryone2Join(thrdtbl)
+                else:
+                    logline += 'Process NULL:{}'.format(nxturl)
+                    print(logline)
+                pass
+            elif (multi == 'thrdpl') or (multi == 'prcspl'):
+                pass
+            else:
+                #print(f'{nxturl}@{nxtcntnt}')
+                surf(nxturl, tabs, multi, nxtcntnt)
+                #print('--'*tabs)
 
-            #print(f'{nxturl}@{nxtcntnt}')
-            surf(nxturl, nxtcntnt)
-            #print('--'*tabs)
+    if (multi == 'thrd') or (multi == 'prcs'):
+        waitForEveryone2Join(thrdtbl)
+    elif (multi == 'thrdpl') or (multi == 'prcspl'):
+        for t in thrdtbl:
+            t.result(timeout=None)
+        exectr.shutdown()
 
     if 0 < tabs:
         tabs -= 1
 
+    print(logline)
     return
 
+def main():
+    global maxtabs, exectr
+    argp = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                    description='指定のコンテンツからリンクされているコンテンツを辿り渡る')
+    argp.add_argument('url', metavar='<URL>', help='開始URL')
+    argp.add_argument('-lvl', '--linklevel', type=int, default=16, help='辿る深さ')
+    argp.add_argument('-mlt', '--multi', choices=['thrd','prcs','prcspl','thrdpl','none'], default='none', help='並列処理を有効にする')
 
-if (0 < len(sys.argv)):
-    for (x, v) in enumerate(sys.argv):
-        print ('x:{} v:{}'.format(x,v))
-        if x == 1:
-            strurl = v
-        elif x == 2:
-            maxtabs = int(v)
+    args = argp.parse_args()
+    #print('args:{}'.format(args))
 
-surf(strurl)
+    strurl = args.url
+    httpprfx = 'http://'
+    httplen = len(httpprfx)
+    if (httplen <= len(strurl)) and (httpprfx != strurl[:httplen]):
+        httpprfx = 'https://'
+        httplen = len(httpprfx)
+        if (httplen <= len(strurl)) and (httpprfx != strurl[:httplen]):
+            strurl = httpprfx + strurl
+        elif len(strurl) < httplen:
+            strurl = httpprfx + strurl
+    elif len(strurl) < httplen:
+        strurl = 'https://' + strurl
+    #print('URL:{}'.format(strurl))
+
+    maxtabs = args.linklevel
+
+    if (args.multi == 'prcspl') or (args.multi == 'thrdpl'):
+        if args.multi == 'thrdpl':
+            exectr = ThreadPoolExecutor(max_workers=maxofthread)
+        else:
+            exectr = ProcessPoolExecutor(max_workers=maxofprocs)
+
+    surf(strurl, 0, args.multi)
+
+# main
+if __name__ == '__main__':
+    main()
