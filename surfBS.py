@@ -55,7 +55,7 @@ def ignor_domain(url):
 def dlttime(bftm):
     aftm = time.time()
     dlttm = aftm - bftm
-    return f'{dlttm:08.4}'
+    return '{:08.4}'.format(dlttm)
 
 def tabspace(tabs):
     tabstr = ''
@@ -103,7 +103,7 @@ def surf(url, cntnt=""):
 
     ignr = ignor_domain(url)
     if 0 < len(ignr):
-        print(f'Ignor:{url} server is {ignr}')
+        print('Ignor:{} server is {}'.format(url,ignr))
 
     if 0 < len(cntnt) and '#' in cntnt:
         return
@@ -111,7 +111,7 @@ def surf(url, cntnt=""):
     tabstr = tabspace(tabs)
 
     if 0 < len(cntnt):
-        requrl = f'{url}/{cntnt}'
+        requrl = '{}/{}'.format(url,cntnt)
     else:
         requrl = url
 
@@ -125,11 +125,11 @@ def surf(url, cntnt=""):
         #print(', So ignor.')
         return
 
-    print(f'{tabstr}{tabs}:', end='')
+    print('{}{}:'.format(tabstr,tabs), end='')
     if len(cntnt) == 0:
-        print(f'[{url}]', end='', flush=True)
+        print('[{}]'.format(url), end='', flush=True)
     else:
-        print(f'[{url}]/[{cntnt}]', end='', flush=True)
+        print('[{}]/[{}]'.format(url,cntnt), end='', flush=True)
 
     visitor_registration(requrl)
     tabs += 1
@@ -138,7 +138,7 @@ def surf(url, cntnt=""):
     try:
         resp = urllib.request.urlopen(requrl)
     except Exception:
-        print(f' X {dlttime(bftm)}')
+        print(' X {dlttime(bftm)}'.format(bftm))
         if 0 < tabs:
             tabs -= 1
         return;
@@ -154,7 +154,7 @@ def surf(url, cntnt=""):
         contnt = BeautifulSoup(resp, features='html.parser')
     except:
         resp.close()
-        print(f' X {dlttime(bftm)}')
+        print(' X {dlttime(bftm)}'.format(bftm))
         if 0 < tabs:
             tabs -= 1
         return;
@@ -183,7 +183,7 @@ def surf(url, cntnt=""):
 
     resp.close()
 
-    print(f' {dlttime(bftm)}')
+    print(' {}'.format(dlttime(bftm)))
 
     for tagstr in tagstrs:
         if len(tagstr):
@@ -234,7 +234,7 @@ def surf(url, cntnt=""):
 
 if (0 < len(sys.argv)):
     for (x, v) in enumerate(sys.argv):
-        print (f'x:{x} v:{v}')
+        print ('x:{} v:{}'.format(x,v))
         if x == 1:
             strurl = v
         elif x == 2:
