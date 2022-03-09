@@ -5,21 +5,115 @@ import argparse
 import urllib.request
 import urllib.parse
 from bs4 import BeautifulSoup
-import time
+import time as tm
 import sys
 import socket
 import hashlib
 import threading as thrd
-from multiprocessing import Process
+from multiprocessing import Process, Value, Array, Queue
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
+import ctypes
+
+class URLList:
+    visitedUrls = []
+    multi = ''
+    urllstreqque = None
+    urllstrspque = None
+    queproc = None
+
+    def __is_visited(self, requrl):
+        requrl.strip()
+        if 64 < len(requrl):
+            tag = mk_hash(requrl)
+            #print('__is_visited tag:{}'.format(self), file=sys.stderr)
+            #print('__is_visited [{}] tag: {}'.format(len(self.visitedUrls),tag), file=sys.stderr)
+            if tag in self.visitedUrls:
+                #print(f'Already {requrl}:{tag}', end='')
+                #print('REF True [{}][{}]{}'.format(len(requrl),tag,requrl), file=sys.stderr)
+                return True
+            #print('REF False [{}][{}]{}'.format(len(requrl),tag,requrl))
+        else:
+            #print('__is_visited url:{}'.format(self), file=sys.stderr)
+            #print('__is_visited [{}] url: {}'.format(len(self.visitedUrls),requrl), file=sys.stderr)
+            if requrl in self.visitedUrls:
+                #print(f'Already {requrl}', end='')
+                #print('REF True [{}]{}'.format(len(requrl),requrl), file=sys.stderr)
+                return True
+
+        return False
+
+    def __visitor_registration(self, requrl):
+        requrl.strip()
+        if 64 < len(requrl):
+            tag = mk_hash(requrl)
+            #print('__visitor_registration tag:{}:{}'.format(self,len(self.visitedUrls), file=sys.stderr)
+            if not tag in self.visitedUrls:
+                #print('__visitor_registration tag: {}'.format(tag), file=sys.stderr)
+                self.visitedUrls.append(tag)
+        else:
+            #print('__visitor_registration url:{}:{}'.format(self,len(self.visitedUrls), file=sys.stderr)
+            if not requrl in self.visitedUrls:
+                #print('__visitor_registration url: {}'.format(requrl), file=sys.stderr)
+                self.visitedUrls.append(requrl)
+        #print('__visitor_registration last value[{}]: {}'.format(len(self.visitedUrls),self.visitedUrls[-1]), file=sys.stderr)
+        pass
+
+    def __urllst_queproc(self, reqque, rspque):
+        print('Start __urllst_queproc')
+        #print('Start __urllst_queproc', file=sys.stderr)
+        while True:
+            reqdat = reqque.get()
+            if reqdat[0] == 'check':
+                rtn = self.__is_visited(reqdat[1])
+                rspque.put(rtn)
+                pass
+            elif reqdat[0] == 'regst':
+                self.__visitor_registration(reqdat[1])
+                rspque.put('ok')
+                pass
+            elif reqdat[0] == 'quit':
+                break;
+
+    def __init__(self, multi):
+        self.multi = multi
+        if multi != 'none':
+            self.urllstreqque = Queue()
+            self.urllstrspque = Queue()
+            #self.queproc = Process(target=self.__urllst_queproc, args=[self.urllstreqque, self.urllstrspque])
+            self.queproc = thrd.Thread(target=self.__urllst_queproc, args=[self.urllstreqque, self.urllstrspque])
+            self.queproc.start()
+        pass
+
+
+    def is_visited(self, requrl):
+        if self.multi == 'none':
+            return self.__is_visited(requrl)
+        else:
+            self.urllstreqque.put(('check',requrl))
+            rsp = self.urllstrspque.get()
+            #print('is_visited rsp:{}:{}:{}'.format(type(rsp),dir(rsp),rsp))
+            return rsp
+        pass
+
+    def visitor_registration(self, requrl):
+        if self.multi == 'none':
+            self.__visitor_registration(requrl)
+        else:
+            self.urllstreqque.put(('regst',requrl))
+            rsp = self.urllstrspque.get()
+        pass
+
+    def procquit(self):
+        self.urllstreqque.put(('quit',0))
+        self.queproc.join()
 
 #strurl = 'https://chiaki.sakura.ne.jp'
 #strurl = 'https://www.miharu.co.jp'
+
 maxtabs = 16
 maxofthread = 128
 maxofprocs = 6
-numofprcs = 0
 exectr = None
 
 serchHrefs = ('href="', 'HREF="')
@@ -60,7 +154,7 @@ def ignor_domain(url):
     return ""
 
 def dlttime(bftm):
-    aftm = time.time()
+    aftm = tm.time()
     dlttm = aftm - bftm
     return '{:08.4}'.format(dlttm)
 
@@ -80,35 +174,28 @@ def mk_hash(requrl):
     tag = hash.hexdigest()
     return tag
 
-visitedUrls = []
-def is_visited(requrl):
-    if 64 < len(requrl):
-        tag = mk_hash(requrl)
-        if tag in visitedUrls:
-            #print(f'Already {requrl}:{tag}', end='')
-            return True
-    else:
-        if requrl in visitedUrls:
-            #print(f'Already {requrl}', end='')
-            return True
-    return False
 
-def visitor_registration(requrl):
-    if 64 < len(requrl):
-        tag = mk_hash(requrl)
-        visitedUrls.append(tag)
-    else:
-        visitedUrls.append(requrl)
-
-def waitForEveryone2Join(thrdtbl):
-    global numofprcs
+def waitForEveryone2Join(thrdtbl, vl_numofprcs):
+    '''
+    logmsg = '['
+    with vl_numofprcs.get_lock():
+        if 0 < vl_numofprcs.value:
+            logmsg += 'numofprcs({}) -> '.format(vl_numofprcs.value)
+    '''
     while thrdtbl:
         thrdtbl.pop().join()
-        if 0 < numofprcs:
-            numofprcs -= 1
+        with vl_numofprcs.get_lock():
+            if 0 < vl_numofprcs.value:
+                vl_numofprcs.value -= 1
+    '''
+    logmsg += 'numofprcs({})]'.format(vl_numofprcs.value)
+    print(logmsg)
+    '''
 
-def surf(url, level, multi, cntnt=""):
-    global maxtabs, exectr, numofprcs
+#def surf(visitedUrls, url, level, multi, vl_numofprcs, cntnt=""):
+def surf(urllst, url, level, multi, vl_numofprcs, cntnt=""):
+    global maxtabs, exectr
+
     logline = ''
 
     thrdtbl = []
@@ -139,7 +226,7 @@ def surf(url, level, multi, cntnt=""):
         if 0 <= imgfile:
             return
 
-    if is_visited(requrl):
+    if urllst.is_visited(requrl):
         #print(', So ignor.')
         return
 
@@ -152,10 +239,10 @@ def surf(url, level, multi, cntnt=""):
         #print('[{}]/[{}]'.format(url,cntnt), end='', flush=True)
         logline += '[{}]/[{}]'.format(url,cntnt)
 
-    visitor_registration(requrl)
+    urllst.visitor_registration(requrl)
     tabs += 1
 
-    bftm = time.time()
+    bftm = tm.time()
     try:
         resp = urllib.request.urlopen(requrl)
     except Exception as er:
@@ -248,12 +335,12 @@ def surf(url, level, multi, cntnt=""):
                 nxturl = nxturl.rstrip('/')
 
             if multi == 'thrd':
-                thrdtbl.append(thrd.Thread(target=surf, args=[nxturl, tabs, multi, nxtcntnt]))
+                thrdtbl.append(thrd.Thread(target=surf, args=[urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt]))
                 thrdtbl[-1].start()
                 pass
             elif multi == 'prcs':
                 try:
-                    proc = Process(target=surf, args=[nxturl, tabs, multi, nxtcntnt])
+                    proc = Process(target=surf, args=[urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt])
                 except:
                     #print('Process fail:{}'.format(nxturl))
                     logline += 'Process fail:{}'.format(nxturl)
@@ -261,10 +348,12 @@ def surf(url, level, multi, cntnt=""):
                     continue
                 if proc:
                     thrdtbl.append(proc)
-                    numofprcs += 1
+                    with vl_numofprcs.get_lock():
+                        vl_numofprcs.value += 1
+
                     thrdtbl[-1].start()
-                    if (maxofprocs <= numofprcs):
-                        waitForEveryone2Join(thrdtbl)
+                    if (maxofprocs <= vl_numofprcs.value):
+                        waitForEveryone2Join(thrdtbl, vl_numofprcs)
                 else:
                     logline += 'Process NULL:{}'.format(nxturl)
                     print(logline)
@@ -273,11 +362,11 @@ def surf(url, level, multi, cntnt=""):
                 pass
             else:
                 #print(f'{nxturl}@{nxtcntnt}')
-                surf(nxturl, tabs, multi, nxtcntnt)
+                surf(urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt)
                 #print('--'*tabs)
 
     if (multi == 'thrd') or (multi == 'prcs'):
-        waitForEveryone2Join(thrdtbl)
+        waitForEveryone2Join(thrdtbl, vl_numofprcs)
     elif (multi == 'thrdpl') or (multi == 'prcspl'):
         for t in thrdtbl:
             t.result(timeout=None)
@@ -290,6 +379,7 @@ def surf(url, level, multi, cntnt=""):
     return
 
 def main():
+    #global maxtabs, exectr, visitedUrls
     global maxtabs, exectr
     argp = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                     description='指定のコンテンツからリンクされているコンテンツを辿り渡る')
@@ -316,13 +406,20 @@ def main():
 
     maxtabs = args.linklevel
 
+    vl_numofprcs = Value(ctypes.c_int, 0)
+    urllst = URLList(args.multi)
+
     if (args.multi == 'prcspl') or (args.multi == 'thrdpl'):
         if args.multi == 'thrdpl':
             exectr = ThreadPoolExecutor(max_workers=maxofthread)
         else:
             exectr = ProcessPoolExecutor(max_workers=maxofprocs)
 
-    surf(strurl, 0, args.multi)
+    #surf(ar_visitedUrls, strurl, 0, args.multi, vl_numofprcs)
+    surf(urllst, strurl, 0, args.multi, vl_numofprcs)
+
+    if args.multi != 'none':
+        urllst.procquit()
 
 # main
 if __name__ == '__main__':
