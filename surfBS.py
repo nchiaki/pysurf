@@ -112,8 +112,8 @@ class URLList:
 #strurl = 'https://www.miharu.co.jp'
 
 maxtabs = 16
-maxofthread = 128
-maxofprocs = 6
+maxofthread = 0
+maxofprocs = 0
 exectr = None
 
 serchHrefs = ('href="', 'HREF="')
@@ -176,21 +176,11 @@ def mk_hash(requrl):
 
 
 def waitForEveryone2Join(thrdtbl, vl_numofprcs):
-    '''
-    logmsg = '['
-    with vl_numofprcs.get_lock():
-        if 0 < vl_numofprcs.value:
-            logmsg += 'numofprcs({}) -> '.format(vl_numofprcs.value)
-    '''
     while thrdtbl:
         thrdtbl.pop().join()
         with vl_numofprcs.get_lock():
             if 0 < vl_numofprcs.value:
                 vl_numofprcs.value -= 1
-    '''
-    logmsg += 'numofprcs({})]'.format(vl_numofprcs.value)
-    print(logmsg)
-    '''
 
 #def surf(visitedUrls, url, level, multi, vl_numofprcs, cntnt=""):
 def surf(urllst, url, level, multi, vl_numofprcs, cntnt=""):
@@ -336,7 +326,11 @@ def surf(urllst, url, level, multi, vl_numofprcs, cntnt=""):
 
             if multi == 'thrd':
                 thrdtbl.append(thrd.Thread(target=surf, args=[urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt]))
+                with vl_numofprcs.get_lock():
+                    vl_numofprcs.value += 1
                 thrdtbl[-1].start()
+                if (maxofthread <= vl_numofprcs.value):
+                    waitForEveryone2Join(thrdtbl, vl_numofprcs)
                 pass
             elif multi == 'prcs':
                 try:
@@ -386,6 +380,8 @@ def main():
     argp.add_argument('url', metavar='<URL>', help='開始URL')
     argp.add_argument('-lvl', '--linklevel', type=int, default=16, help='辿る深さ')
     argp.add_argument('-mlt', '--multi', choices=['thrd','prcs','prcspl','thrdpl','none'], default='none', help='並列処理を有効にする')
+    argp.add_argument('-mxps', '--maxprocs', type=int, default=2, help='並列処理最大生成数')
+    argp.add_argument('-mxtd', '--maxthread', type=int, default=8, help='並行処理最大生成数')
 
     args = argp.parse_args()
     #print('args:{}'.format(args))
@@ -405,6 +401,9 @@ def main():
     #print('URL:{}'.format(strurl))
 
     maxtabs = args.linklevel
+    maxofthread = args.maxprocs
+    maxofprocs = args.maxthread
+
 
     vl_numofprcs = Value(ctypes.c_int, 0)
     urllst = URLList(args.multi)
