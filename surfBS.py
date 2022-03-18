@@ -145,7 +145,7 @@ class EXEqueue:
             elif reqdat[0] == 'quit':
                 while not self.exequeue.empty():
                     reqdat = self.exequeue.get_nowait()
-                    print("Ignor:{}".format(reqdat))
+                    print("Ignor by quit:{}".format(reqdat))
                 break
             else:
                 print("__exeque_proc recv:{}/{}".format(reqque.qsize(), reqdat))
@@ -182,6 +182,13 @@ class EXEqueue:
         self.queproc.join()
         #print('EXEqueue.procquit() END')
 
+    def is_empty(self):
+        if self.exequeue.empty():
+            return True
+        else:
+            return False
+
+
 #strurl = 'https://chiaki.sakura.ne.jp'
 #strurl = 'https://www.miharu.co.jp'
 
@@ -191,6 +198,8 @@ maxofprocs = 0
 exectr = None
 logout = ''
 exeque = None
+_urllst = None
+_vl_numofprcs = None
 
 serchHrefs = ('href="', 'HREF="')
 serchHttps = ('http://', 'https://')
@@ -232,7 +241,8 @@ def ignor_domain(url):
 def dlttime(bftm):
     aftm = tm.time()
     dlttm = aftm - bftm
-    return '{:08.4}'.format(dlttm)
+    #return '{:08.4}'.format(dlttm)
+    return '@'
 
 def tabspace(tabs):
     tabstr = ''
@@ -251,100 +261,252 @@ def mk_hash(requrl):
     return tag
 
 
-def waitForEveryone2Join(thrdtbl, vl_numofprcs):
+def waitForEveryone2Join(me, thrdtbl, vl_numofprcs):
     if logout:
         print('waitForEveryone2Join:{} <<<'.format(len(thrdtbl)))
 
+    iam = None
+
     while thrdtbl:
         proc = thrdtbl.pop()
+        if proc[1] == me:
+            iam = proc
+            continue
+
         proc[0].join()
         with vl_numofprcs.get_lock():
             if 0 < vl_numofprcs.value:
                 vl_numofprcs.value -= 1
 
-    if logout:
-        print('waitForEveryone2Join:{} >>>'.format(len(thrdtbl)))
+        print('[{}]{}: remove from waitForEveryone2'.format(me,proc[1]))
 
-def waitForEveryone2Result(exectr, thrdtbl, vl_numofprcs):
-    if logout:
-        print('waitForEveryone2Result:{} <<<'.format(len(thrdtbl)))
+    if iam:
+        thrdtbl.append(iam)
+    '''
     while thrdtbl:
         svtbl = []
         while thrdtbl:
             proc = thrdtbl.pop()
             try:
-                proc[0].result(timeout=1)
-            except:
-                print("{}:{}:No result {}".format(proc[0], proc[0].running(), proc[0]._state))
-                continue
+                proc[0].join(timeout=1.0)
+            except Exception as er:
+                if proc[0].running():
+                    print("{} {}:{} No join {}".format(er, proc[0], proc[0].running(), proc[0]._state))
+                    svtbl.append(proc)
+                    continue
+
             with vl_numofprcs.get_lock():
                 if 0 < vl_numofprcs.value:
                     vl_numofprcs.value -= 1
-                    print('-Submit: {}'.format(vl_numofprcs.value))
+        if len(svtbl):
+            thrdtbl = svtbl
+            print('After {} threads/procs'.format(len(svtbl)))
+        '''
+
+    if logout:
+        print('waitForEveryone2Join:{} >>>'.format(len(thrdtbl)))
+
+def waitForEveryone2Result(me, thrdtbl, vl_numofprcs):
+    if logout:
+        print('waitForEveryone2Result:{} <<<'.format(len(thrdtbl)))
+
+    iam = None
+    premsg = ''
+    while thrdtbl:
+        svtbl = []
+        while thrdtbl:
+            proc = thrdtbl.pop()
+            if proc[1] == me:
+                iam = proc
+                continue
+
+            try:
+                proc[0].result(timeout=1.0)
+            except Exception as er:
+                if proc[0].running():
+                    '''
+                    msg = "{} {}:{} No result {}".format(er, proc[1], proc[0].running(), proc[0]._state)
+                    if premsg != msg:
+                        print(msg)
+                        premsg = msg
+                    '''
+                    svtbl.append(proc)
+                    continue
+
+            with vl_numofprcs.get_lock():
+                if 0 < vl_numofprcs.value:
+                    vl_numofprcs.value -= 1
+                    #print('-Submit: {}'.format(vl_numofprcs.value))
+
+            print('[{}]{}: remove from waitForEveryone2'.format(me,proc[1]))
 
         if len(svtbl):
             thrdtbl = svtbl
+            #print('After {} threads/procs'.format(len(svtbl)))
+
+    if iam:
+        thrdtbl.append(iam)
+
     if logout:
         print('waitForEveryone2Result:{} >>>'.format(len(thrdtbl)))
 
-def start_surf(thrdtbl,urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt):
+def waitForEveryone2Nowait(me, thrdtbl, vl_numofprcs):
+    for proc in thrdtbl:
+        if proc[1] == me:
+            thrdtbl.remove(me)
+            with vl_numofprcs.get_lock():
+                if 0 < vl_numofprcs.value:
+                    vl_numofprcs.value -= 1
+            print('[{}]{}: remove from waitForEveryone2'.format(me,proc[1]))
+            break
+
+def surf_prcspool(me, nxturl, tabs, multi, nxtcntnt):
+    global _urllst, _vl_numofprcs
+
+    rtn = surf(me, _urllst, nxturl, tabs, multi, _vl_numofprcs, cntnt=nxtcntnt)
+
+    return rtn
+
+def maxof_waitForEveryone2(multi):
     if multi == 'thrd':
-        maxof = maxofthread
+        return maxofthread, waitForEveryone2Join
     elif multi == 'prcs':
-        maxof = maxofprocs
+        return maxofprocs, waitForEveryone2Join
+    elif multi == 'thrdpl':
+        return maxofthread, waitForEveryone2Result
+    elif multi == 'prcspl':
+        return  maxofprocs, waitForEveryone2Nowait
     else:
+        return 0, None
+
+def start_surf(me, thrdtbl,urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt):
+    maxof, waitForEveryone2 = maxof_waitForEveryone2(multi)
+    if waitForEveryone2 == None:
         return False
+
+    #print('Start[{}] {}/{}'.format(me, vl_numofprcs.value, maxof))
 
     if maxof < vl_numofprcs.value:
-        exeque.enque((nxturl, tabs, multi, nxtcntnt))
+        print('Enqueu[{}] {}:{}:{}:{}'.format(me, nxturl, tabs, multi, nxtcntnt))
+        exeque.enque((me, nxturl, tabs, multi, nxtcntnt))
         return False
     else:
+        print('Fire[{}] {}:{}:{}:{}'.format(me, nxturl, tabs, multi, nxtcntnt))
         try:
+            you = tm.time()
             if multi == 'thrd':
-                proc = thrd.Thread(target=surf, args=[urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt])
+                proc = thrd.Thread(target=surf, args=[you, urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt])
             elif multi == 'prcs':
-                proc = Process(target=surf, args=[urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt])
+                proc = Process(target=surf, args=[you, urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt])
+            elif multi == 'thrdpl':
+                proc = exectr.submit(surf, you, urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt)
+            elif multi == 'prcspl':
+                print('IN submit[{}]'.format(me))
+                proc = exectr.submit(surf_prcspool, you, nxturl, tabs, multi, nxtcntnt)
+                print('OUT submit[{}]:{}'.format(me,you))
             else:
                 return False
-        except:
-            print('Creat error:surf[{}${}]'.format(nxturl,nxtcntnt))
+        except Exception as er:
+            print('Creat error[{}] {}:surf[{}${}]'.format(me,er,nxturl,nxtcntnt))
+            exeque.enque((me, nxturl, tabs, multi, nxtcntnt))
             return False
 
-        thrdtbl.append((proc, nxturl+'$'+nxtcntnt))
+        print('start surf proc[{}]{}:{}${}'.format(me,you,nxturl,nxtcntnt))
+
+        thrdtbl.append((proc, you))
         with vl_numofprcs.get_lock():
             vl_numofprcs.value += 1
-        thrdtbl[-1][0].start()
+
+        if (multi == 'thrd') or (multi == 'prcs'):
+            thrdtbl[-1][0].start()
 
         if maxof <= vl_numofprcs.value:
-            waitForEveryone2Join(thrdtbl, vl_numofprcs)
-            while vl_numofprcs.value < maxof:
-                que = exeque.deque()
-                if que:
-                    try:
-                        if multi == 'thrd':
-                            proc = thrd.Thread(target=surf, args=[urllst,que[0],que[1],que[2],vl_numofprcs,que[3]])
-                        elif multi == 'prcs':
-                            proc = Process(target=surf, args=[urllst,que[0],que[1],que[2],vl_numofprcs,que[3]])
-                        else:
-                            return False
-                    except:
-                        print('Creat error:surf[{}${}]'.format(que[0],que[3]))
+            print('waitForEveryone2[{}] {}/{}'.format(me,vl_numofprcs.value,maxof))
+            waitForEveryone2(me, thrdtbl, vl_numofprcs)
+            #print('Dequeue count info {}/{}'.format(vl_numofprcs.value,maxof))
+            #while vl_numofprcs.value < maxof:
+            que = exeque.deque()
+            if que:
+                you = tm.time()
+                try:
+                    if multi == 'thrd':
+                        proc = thrd.Thread(target=surf, args=[you,urllst,que[1],que[2],que[3],vl_numofprcs,que[4]])
+                    elif multi == 'prcs':
+                        proc = Process(target=surf, args=[you,urllst,que[1],que[2],que[3],vl_numofprcs,que[4]])
+                    elif multi == 'thrdpl':
+                        proc = exectr.submit(surf, you,urllst,que[1],que[2],que[3],vl_numofprcs,que[4])
+                    elif multi == 'prcspl':
+                        proc = exectr.submit(surf_prcspool, you,que[1],que[2],que[3],que[4])
+                    else:
                         return False
+                except Exception as er:
+                    print('Creat error[{}]{}:surf[{}${}]'.format(me,er,que[1],que[4]))
+                    exeque.enque((me,que[1],que[2],que[3],que[4]))
+                    return False
 
-                    thrdtbl.append((proc, nxturl+'$'+nxtcntnt))
-                    with vl_numofprcs.get_lock():
-                        vl_numofprcs.value += 1
+                print('start surf deque proc[{}]{}:{}${}'.format(me,you,que[1],que[4]))
+
+                thrdtbl.append((proc, you))
+                with vl_numofprcs.get_lock():
+                    vl_numofprcs.value += 1
+
+                if (multi == 'thrd') or (multi == 'prcs'):
                     thrdtbl[-1][0].start()
-                else:
-                    break
+            #else:
+            #    break
         return True
 
+def flush_surf(me, thrdtbl, urllst, multi, vl_numofprcs):
+    maxof, waitForEveryone2 = maxof_waitForEveryone2(multi)
+    if waitForEveryone2 == None:
+        return False
+
+    que = exeque.deque()
+    while que:
+        try:
+            #print('Flush {}:{}:{}:{}:{}'.format(que[0],que[1],que[2],que[3],que[4]))
+            you = tm.time()
+            if multi == 'thrd':
+                proc = thrd.Thread(target=surf, args=[you,urllst,que[1],que[2],que[3],vl_numofprcs,que[4]])
+            elif multi == 'prcs':
+                proc = Process(target=surf, args=[you,urllst,que[1],que[2],que[3],vl_numofprcs,que[4]])
+            elif multi == 'thrdpl':
+                proc = exectr.submit(surf, you,urllst,que[1],que[2],que[3],vl_numofprcs,que[4])
+            elif multi == 'prcspl':
+                proc = exectr.submit(surf_prcspool, you,que[1],que[2],que[3],que[4])
+            else:
+                return False
+        except Exception as er:
+                print('Creat error[{}]{}:surf[{}${}]'.format(me,er,que[1],que[4]))
+                #exeque.enque((que[0],que[1],que[2],que[3]))
+                que = exeque.deque()
+                continue
+
+        print('start flush surf deque proc[{}]{}:{}${}'.format(me,you,que[1],que[4]))
+
+        thrdtbl.append((proc, you))
+
+        with vl_numofprcs.get_lock():
+            vl_numofprcs.value += 1
+
+        if (multi == 'thrd') or (multi == 'prcs'):
+            thrdtbl[-1][0].start()
+
+        if maxof <= vl_numofprcs.value:
+            print('flush_surf waitForEveryone2[{}] {}/{}'.format(me,vl_numofprcs.value,maxof))
+            waitForEveryone2(me, thrdtbl, vl_numofprcs)
+
+        que = exeque.deque()
+
+    print('flush_surf waitForEveryone2[{}]:{}'.format(me,vl_numofprcs.value))
+    waitForEveryone2(me,thrdtbl,vl_numofprcs)
+
+
 #def surf(visitedUrls, url, level, multi, vl_numofprcs, cntnt=""):
-def surf(urllst, url, level, multi, vl_numofprcs, cntnt=""):
+def surf(me, urllst, url, level, multi, vl_numofprcs, cntnt=""):
     global maxtabs, exectr, maxofprocs, maxofthread, logout, exeque
 
-    if (multi == 'thrdpl') or (multi == 'prcspl'):
-        print('Start:[{}]{}'.format(level, url))
+    print('surf[{}]:{}${} tabs:{}/{}'.format(me,url,cntnt,level,maxtabs))
 
     logline = ''
 
@@ -377,7 +539,7 @@ def surf(urllst, url, level, multi, vl_numofprcs, cntnt=""):
             return False
 
     if urllst.is_visited(requrl):
-        #print(', So ignor.')
+        #print('Already visited:{}',format(requrl))
         return True
 
     #print('{}{}:'.format(tabstr,tabs), end='')
@@ -452,6 +614,7 @@ def surf(urllst, url, level, multi, vl_numofprcs, cntnt=""):
     #print(' {}'.format(dlttime(bftm)))
     logline += ' {}'.format(dlttime(bftm))
 
+    #print('surf[{}] URLS:{}'.format(me,len(tagstrs)))
     for tagstr in tagstrs:
         if len(tagstr):
             tagstr = tagstr.strip()
@@ -488,63 +651,18 @@ def surf(urllst, url, level, multi, vl_numofprcs, cntnt=""):
             else:
                 nxturl = nxturl.rstrip('/')
 
-            if (multi == 'thrd') or (multi == 'prcs'):
-                rtn = start_surf(thrdtbl,urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt)
+            if multi != 'none':
+                #print('IN start_surf[{}]'.format(me))
+                rtn = start_surf(me, thrdtbl,urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt)
+                #print('OUT start_surf[{}]:{}'.format(me,rtn))
+
                 if rtn == False:
                     continue
-                pass
-
-            elif (multi == 'thrdpl') or (multi == 'prcspl'):
-                try:
-                    proc = exectr.submit(surf, urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt)
-                except:
-                    logline += 'Submit fail:{}'.format(nxturl)
-                    print(logline)
-                    continue
-                if proc:
-                    thrdtbl.append((proc, nxturl+'$'+nxtcntnt))
-                    with vl_numofprcs.get_lock():
-                        vl_numofprcs.value += 1
-                    #print('+Submit:{} multi:{} maxofthread:{} maxofprocs:{}'.format(vl_numofprcs.value, multi, maxofthread, maxofprocs))
-                    if (multi == 'thrdpl') and (maxofthread <= vl_numofprcs.value):
-                        waitForEveryone2Result(exectr, thrdtbl, vl_numofprcs)
-                    elif (multi == 'prcspl') and (maxofprocs <= vl_numofprcs.value):
-                        waitForEveryone2Result(exectr, thrdtbl, vl_numofprcs)
-                    else:
-                        pass
-                else:
-                    logline += 'Submit None:{}'.format(nxturl)
-                    print(logline)
-                pass
             else:
-                #print(f'{nxturl}@{nxtcntnt}')
-                surf(urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt)
-                #print('--'*tabs)
+                surf(me, urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt)
 
-    if (multi == 'thrd') or (multi == 'prcs'):
-        if multi == 'thrd':
-            maxof = maxofthread
-        else:
-            maxof = maxofprocs
-        que = exeque.deque()
-        while que:
-            if multi == 'thrd':
-                thrdtbl.append((thrd.Thread(target=surf, args=[urllst,que[0],que[1],que[2],vl_numofprcs,que[3],]), '$'))
-            else:
-                thrdtbl.append((Process(target=surf, args=[urllst,que[0],que[1],que[2],vl_numofprcs,que[3],]), '$'))
-            with vl_numofprcs.get_lock():
-                vl_numofprcs.value += 1
-            thrdtbl[-1][0].start()
-
-            if maxof <= vl_numofprcs.value:
-                waitForEveryone2Join(thrdtbl, vl_numofprcs)
-
-            que = exeque.deque()
-
-        waitForEveryone2Join(thrdtbl, vl_numofprcs)
-
-    elif (multi == 'thrdpl') or (multi == 'prcspl'):
-        waitForEveryone2Result(exectr, thrdtbl, vl_numofprcs)
+    if multi != 'none':
+        flush_surf(me, thrdtbl,urllst, multi, vl_numofprcs)
 
     if 0 < tabs:
         tabs -= 1
@@ -554,13 +672,13 @@ def surf(urllst, url, level, multi, vl_numofprcs, cntnt=""):
 
 def main():
     #global maxtabs, exectr, visitedUrls
-    global maxtabs, exectr, maxofprocs, maxofthread, logout, exeque
+    global maxtabs, exectr, maxofprocs, maxofthread, logout, exeque, _urllst, _vl_numofprcs
     argp = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                     description='指定のコンテンツからリンクされているコンテンツを辿り渡る')
     argp.add_argument('url', metavar='<URL>', help='開始URL')
     argp.add_argument('-lvl', '--linklevel', type=int, default=16, help='辿る深さ')
     argp.add_argument('-mlt', '--multi', choices=['thrd','prcs','prcspl','thrdpl','none'], default='none', help='並列処理を有効にする')
-    argp.add_argument('-mxps', '--maxprocs', type=int, default=2, help='並列処理最大生成数')
+    argp.add_argument('-mxps', '--maxprocs', type=int, default=4, help='並列処理最大生成数')
     argp.add_argument('-mxtd', '--maxthread', type=int, default=8, help='並行処理最大生成数')
     argp.add_argument('-lgot', '--logout', action='store_true', help='ログ出力先')
 
@@ -587,7 +705,9 @@ def main():
     logout = args.logout
 
     vl_numofprcs = Value(ctypes.c_int, 0)
+    _vl_numofprcs = vl_numofprcs
     urllst = URLList(args.multi)
+    _urllst = urllst
     exeque = EXEqueue(args.multi)
 
     if (args.multi == 'prcspl') or (args.multi == 'thrdpl'):
@@ -597,11 +717,20 @@ def main():
         else:
             exectr = ProcessPoolExecutor(max_workers=maxofprocs)
 
-    surf(urllst, strurl, 0, args.multi, vl_numofprcs)
+    surf(tm.time(), urllst, strurl, 0, args.multi, vl_numofprcs)
 
+    '''
     if (args.multi == 'prcspl') or (args.multi == 'thrdpl'):
-        print('<Shutdown>')
+        premsg = ''
+        while vl_numofprcs.value or not exeque.is_empty():
+            msg = '{} more threads/procs <Shutdown>'.format(vl_numofprcs.value)
+            if premsg != msg:
+                print(msg)
+                premsg = msg
+            tm.sleep(0.01)
+
         exectr.shutdown()
+    '''
 
     if args.multi != 'none':
         urllst.procquit()
