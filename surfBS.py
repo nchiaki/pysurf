@@ -427,7 +427,7 @@ def start_surf(me, thrdtbl,urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt):
             thrdtbl[-1][0].start()
 
         if maxof <= vl_numofprcs.value:
-            print('waitForEveryone2[{}] {}/{}'.format(me,vl_numofprcs.value,maxof))
+            #print('waitForEveryone2[{}] {}/{}'.format(me,vl_numofprcs.value,maxof))
             waitForEveryone2(me, thrdtbl, vl_numofprcs)
             #print('Dequeue count info {}/{}'.format(vl_numofprcs.value,maxof))
             #while vl_numofprcs.value < maxof:
@@ -499,12 +499,12 @@ def flush_surf(me, thrdtbl, urllst, multi, vl_numofprcs):
             thrdtbl[-1][0].start()
 
         if maxof <= vl_numofprcs.value:
-            print('flush_surf waitForEveryone2[{}] {}/{}'.format(me,vl_numofprcs.value,maxof))
+            #print('flush_surf waitForEveryone2[{}] {}/{}'.format(me,vl_numofprcs.value,maxof))
             waitForEveryone2(me, thrdtbl, vl_numofprcs)
 
         que = exeque.deque()
 
-    print('flush_surf waitForEveryone2[{}]:{}'.format(me,vl_numofprcs.value))
+    #print('flush_surf waitForEveryone2[{}]:{}'.format(me,vl_numofprcs.value))
     waitForEveryone2(me,thrdtbl,vl_numofprcs)
 
 
@@ -512,7 +512,7 @@ def flush_surf(me, thrdtbl, urllst, multi, vl_numofprcs):
 def surf(me, urllst, url, level, multi, vl_numofprcs, cntnt=""):
     global maxtabs, exectr, maxofprocs, maxofthread, logout, exeque
 
-    print('surf[{}]:{}${} tabs:{}/{}'.format(me,url,cntnt,level,maxtabs))
+    #print('surf[{}]:{}${} tabs:{}/{}'.format(me,url,cntnt,level,maxtabs))
 
     logline = ''
 
