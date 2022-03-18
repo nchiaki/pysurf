@@ -732,7 +732,7 @@ def main():
         exectr.shutdown()
     '''
 
-    if args.multi != 'none':
+    if (args.multi != 'none') and (args.multi != 'prcspl'):
         urllst.procquit()
         exeque.procquit()
 
