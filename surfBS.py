@@ -584,10 +584,10 @@ def surf(me, urllst, url, level, multi, vl_numofprcs, cntnt=""):
 
     try:
         contnt = BeautifulSoup(resp, features='html.parser')
-    except:
+    except Exception as er:
         resp.close()
-        #print(' X {}:{}'.format(dlttime(bftm)))
-        logline += ' X {}:{}'.format(dlttime(bftm))
+        #print(' X {}:{}'.format(dlttime(bftm),er))
+        logline += ' X {}:{}'.format(dlttime(bftm),er)
         if 0 < tabs:
             tabs -= 1
         print(logline)
