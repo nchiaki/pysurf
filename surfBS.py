@@ -564,7 +564,7 @@ def surf(me, urllst, url, level, multi, vl_numofprcs, cntnt=""):
         print('<{}'.format(requrl), file=sys.stderr)
     bftm = tm.time()
     try:
-        print('urlopen:{}'.format(requrl))
+        print('urlopen[{}]:{}'.format(me,requrl))
         resp = urllib.request.urlopen(requrl, timeout=16)
     except Exception as er:
         #print(' X {}:{}'.format(dlttime(bftm),er))
@@ -659,7 +659,7 @@ def surf(me, urllst, url, level, multi, vl_numofprcs, cntnt=""):
                 nxturl = nxturl.rstrip('/')
 
             if multi != 'none':
-                #print('IN start_surf[{}]'.format(me))
+                print('IN start_surf[{}]:{}${}'.format(me,nxturl,nxtcntnt))
                 rtn = start_surf(me, thrdtbl,urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt)
                 #print('OUT start_surf[{}]:{}'.format(me,rtn))
 
