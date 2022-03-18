@@ -391,11 +391,11 @@ def start_surf(me, thrdtbl,urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt):
     #print('Start[{}] {}/{}'.format(me, vl_numofprcs.value, maxof))
 
     if maxof < vl_numofprcs.value:
-        print('Enqueu[{}] {}:{}:{}:{}'.format(me, nxturl, tabs, multi, nxtcntnt))
+        #print('Enqueu[{}] {}:{}:{}:{}'.format(me, nxturl, tabs, multi, nxtcntnt))
         exeque.enque((me, nxturl, tabs, multi, nxtcntnt))
         return False
     else:
-        print('Fire[{}] {}:{}:{}:{}'.format(me, nxturl, tabs, multi, nxtcntnt))
+        #print('Fire[{}] {}:{}:{}:{}'.format(me, nxturl, tabs, multi, nxtcntnt))
         try:
             you = tm.time()
             if multi == 'thrd':
@@ -731,7 +731,7 @@ def main():
                 print(msg)
                 premsg = msg
             tm.sleep(0.1)
-        #exectr.shutdown()
+        exectr.shutdown()
 
     if args.multi != 'none':
         urllst.procquit()
