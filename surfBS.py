@@ -719,7 +719,6 @@ def main():
 
     surf(tm.time(), urllst, strurl, 0, args.multi, vl_numofprcs)
 
-    '''
     if (args.multi == 'prcspl') or (args.multi == 'thrdpl'):
         premsg = ''
         while vl_numofprcs.value or not exeque.is_empty():
@@ -728,11 +727,9 @@ def main():
                 print(msg)
                 premsg = msg
             tm.sleep(0.01)
+        #exectr.shutdown()
 
-        exectr.shutdown()
-    '''
-
-    if (args.multi != 'none') and (args.multi != 'prcspl'):
+    if args.multi != 'none':
         urllst.procquit()
         exeque.procquit()
 
