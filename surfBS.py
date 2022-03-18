@@ -415,7 +415,7 @@ def start_surf(me, thrdtbl,urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt):
             exeque.enque((me, nxturl, tabs, multi, nxtcntnt))
             return False
 
-        print('start surf proc[{}]{}:{}${}'.format(me,you,nxturl,nxtcntnt))
+        #print('start surf proc[{}]{}:{}${}'.format(me,you,nxturl,nxtcntnt))
 
         thrdtbl.append((proc, you))
         with vl_numofprcs.get_lock():
@@ -486,7 +486,7 @@ def flush_surf(me, thrdtbl, urllst, multi, vl_numofprcs):
                 que = exeque.deque()
                 continue
 
-        print('start flush surf deque proc[{}]{}:{}${}'.format(me,you,que[1],que[4]))
+        #print('start flush surf deque proc[{}]{}:{}${}'.format(me,you,que[1],que[4]))
 
         thrdtbl.append((proc, you))
 
