@@ -351,14 +351,23 @@ def waitForEveryone2Result(me, thrdtbl, vl_numofprcs):
         print('waitForEveryone2Result:{} >>>'.format(len(thrdtbl)))
 
 def waitForEveryone2Nowait(me, thrdtbl, vl_numofprcs):
+    premsg = ''
     for proc in thrdtbl:
         if proc[1] == me:
             thrdtbl.remove(me)
             with vl_numofprcs.get_lock():
                 if 0 < vl_numofprcs.value:
                     vl_numofprcs.value -= 1
-            print('[{}]{}: remove from waitForEveryone2'.format(me,proc[1]))
+            msg = '[{}]{}: remove from waitForEveryone2'.format(me,proc[1])
+            if premsg != msg:
+                print(msg)
+                premsg = msg
             break
+        elif me = 0:
+            msg = "{} {}:{} No result {}".format(er, proc[1], proc[0].running(), proc[0]._state)
+            if premsg != msg:
+                print(msg)
+                premsg = msg
 
 def surf_prcspool(me, nxturl, tabs, multi, nxtcntnt):
     global _urllst, _vl_numofprcs
