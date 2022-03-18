@@ -363,7 +363,7 @@ def waitForEveryone2Nowait(me, thrdtbl, vl_numofprcs):
                 print(msg)
                 premsg = msg
             break
-        elif me = 0:
+        elif me == 0:
             msg = "{} {}:{} No result {}".format(er, proc[1], proc[0].running(), proc[0]._state)
             if premsg != msg:
                 print(msg)
