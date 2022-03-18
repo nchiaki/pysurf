@@ -278,7 +278,7 @@ def waitForEveryone2Join(me, thrdtbl, vl_numofprcs):
             if 0 < vl_numofprcs.value:
                 vl_numofprcs.value -= 1
 
-        print('[{}]{}: remove from waitForEveryone2'.format(me,proc[1]))
+        #print('[{}]{}: remove from waitForEveryone2'.format(me,proc[1]))
 
     if iam:
         thrdtbl.append(iam)
@@ -338,7 +338,7 @@ def waitForEveryone2Result(me, thrdtbl, vl_numofprcs):
                     vl_numofprcs.value -= 1
                     #print('-Submit: {}'.format(vl_numofprcs.value))
 
-            print('[{}]{}: remove from waitForEveryone2'.format(me,proc[1]))
+            #print('[{}]{}: remove from waitForEveryone2'.format(me,proc[1]))
 
         if len(svtbl):
             thrdtbl = svtbl
@@ -358,10 +358,12 @@ def waitForEveryone2Nowait(me, thrdtbl, vl_numofprcs):
             with vl_numofprcs.get_lock():
                 if 0 < vl_numofprcs.value:
                     vl_numofprcs.value -= 1
+            '''
             msg = '[{}]{}: remove from waitForEveryone2'.format(me,proc[1])
             if premsg != msg:
                 print(msg)
                 premsg = msg
+            '''
             break
 
 def surf_prcspool(me, nxturl, tabs, multi, nxtcntnt):
