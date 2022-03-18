@@ -564,6 +564,7 @@ def surf(me, urllst, url, level, multi, vl_numofprcs, cntnt=""):
         print('<{}'.format(requrl), file=sys.stderr)
     bftm = tm.time()
     try:
+        print('urlopen:{}'.format(requrl))
         resp = urllib.request.urlopen(requrl, timeout=16)
     except Exception as er:
         #print(' X {}:{}'.format(dlttime(bftm),er))
