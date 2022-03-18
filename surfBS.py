@@ -397,7 +397,7 @@ def start_surf(me, thrdtbl,urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt):
         exeque.enque((me, nxturl, tabs, multi, nxtcntnt))
         return False
     else:
-        #print('Fire[{}] {}:{}:{}:{}'.format(me, nxturl, tabs, multi, nxtcntnt))
+        print('Fire[{}] {}:{}:{}:{}'.format(me, nxturl, tabs, multi, nxtcntnt))
         try:
             you = tm.time()
             if multi == 'thrd':
