@@ -363,11 +363,6 @@ def waitForEveryone2Nowait(me, thrdtbl, vl_numofprcs):
                 print(msg)
                 premsg = msg
             break
-        elif me == 0:
-            msg = "{} {}:{} No result {}".format(er, proc[1], proc[0].running(), proc[0]._state)
-            if premsg != msg:
-                print(msg)
-                premsg = msg
 
 def surf_prcspool(me, nxturl, tabs, multi, nxtcntnt):
     global _urllst, _vl_numofprcs
@@ -729,18 +724,13 @@ def main():
     surf(tm.time(), urllst, strurl, 0, args.multi, vl_numofprcs)
 
     if (args.multi == 'prcspl') or (args.multi == 'thrdpl'):
-        thrdtbl = []
         premsg = ''
         while vl_numofprcs.value or not exeque.is_empty():
             msg = '{} or empty {} more threads/procs <Shutdown>'.format(vl_numofprcs.value,exeque.is_empty())
             if premsg != msg:
                 print(msg)
                 premsg = msg
-
-            if args.multi != 'none':
-                flush_surf(0, thrdtbl,urllst, args.multi, vl_numofprcs)
-
-            tm.sleep(0.01)
+            tm.sleep(0.1)
         #exectr.shutdown()
 
     if args.multi != 'none':
