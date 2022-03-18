@@ -720,6 +720,7 @@ def main():
     surf(tm.time(), urllst, strurl, 0, args.multi, vl_numofprcs)
 
     if (args.multi == 'prcspl') or (args.multi == 'thrdpl'):
+        thrdtbl = []
         premsg = ''
         while vl_numofprcs.value or not exeque.is_empty():
             msg = '{} more threads/procs <Shutdown>'.format(vl_numofprcs.value)
@@ -728,7 +729,7 @@ def main():
                 premsg = msg
 
             if args.multi != 'none':
-                flush_surf(0, thrdtbl,urllst, multi, vl_numofprcs)
+                flush_surf(0, thrdtbl,urllst, args.multi, vl_numofprcs)
 
             tm.sleep(0.01)
         #exectr.shutdown()
