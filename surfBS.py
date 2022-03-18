@@ -401,9 +401,9 @@ def start_surf(me, thrdtbl,urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt):
             elif multi == 'thrdpl':
                 proc = exectr.submit(surf, you, urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt)
             elif multi == 'prcspl':
-                print('IN submit[{}]'.format(me))
+                #print('IN submit[{}]'.format(me))
                 proc = exectr.submit(surf_prcspool, you, nxturl, tabs, multi, nxtcntnt)
-                print('OUT submit[{}]:{}'.format(me,you))
+                #print('OUT submit[{}]:{}'.format(me,you))
             else:
                 return False
         except Exception as er:
