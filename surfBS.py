@@ -406,7 +406,7 @@ def start_surf(me, thrdtbl,urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt):
                 proc = exectr.submit(surf, you, urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt)
             elif multi == 'prcspl':
                 #print('IN submit[{}]'.format(me))
-                proc = exectr.submit(surf_prcspool, you, nxturl, tabs, multi, nxtcntnt)
+                proc = exectr.submit(surf_prcspool, you, nxturl, tabs, multi, nxtcntnt, timeout=3.0)
                 #print('OUT submit[{}]:{}'.format(me,you))
             else:
                 return False
@@ -440,7 +440,7 @@ def start_surf(me, thrdtbl,urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt):
                     elif multi == 'thrdpl':
                         proc = exectr.submit(surf, you,urllst,que[1],que[2],que[3],vl_numofprcs,que[4])
                     elif multi == 'prcspl':
-                        proc = exectr.submit(surf_prcspool, you,que[1],que[2],que[3],que[4])
+                        proc = exectr.submit(surf_prcspool, you,que[1],que[2],que[3],que[4], timeout=3.0)
                     else:
                         return False
                 except Exception as er:
@@ -477,7 +477,7 @@ def flush_surf(me, thrdtbl, urllst, multi, vl_numofprcs):
             elif multi == 'thrdpl':
                 proc = exectr.submit(surf, you,urllst,que[1],que[2],que[3],vl_numofprcs,que[4])
             elif multi == 'prcspl':
-                proc = exectr.submit(surf_prcspool, you,que[1],que[2],que[3],que[4])
+                proc = exectr.submit(surf_prcspool, you,que[1],que[2],que[3],que[4], timeout=3.0)
             else:
                 return False
         except Exception as er:
