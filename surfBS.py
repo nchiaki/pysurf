@@ -727,7 +727,7 @@ def main():
                 print(msg)
                 premsg = msg
 
-            if multi != 'none':
+            if args.multi != 'none':
                 flush_surf(me, thrdtbl,urllst, multi, vl_numofprcs)
 
             tm.sleep(0.01)
