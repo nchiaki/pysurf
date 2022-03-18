@@ -732,7 +732,7 @@ def main():
         thrdtbl = []
         premsg = ''
         while vl_numofprcs.value or not exeque.is_empty():
-            msg = '{} more threads/procs <Shutdown>'.format(vl_numofprcs.value)
+            msg = '{} or empty {} more threads/procs <Shutdown>'.format(vl_numofprcs.value,exeque.is_empty())
             if premsg != msg:
                 print(msg)
                 premsg = msg
