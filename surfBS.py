@@ -285,8 +285,7 @@ def mk_hash(requrl):
 
 
 def waitForEveryone2Join(me, thrdtbl, vl_numofprcs):
-    if logout:
-        print('waitForEveryone2Join:{} <<<'.format(len(thrdtbl)))
+    #print('waitForEveryone2Join:{} <<<'.format(len(thrdtbl)))
 
     iam = None
 
@@ -326,12 +325,10 @@ def waitForEveryone2Join(me, thrdtbl, vl_numofprcs):
             print('After {} threads/procs'.format(len(svtbl)))
         '''
 
-    if logout:
-        print('waitForEveryone2Join:{} >>>'.format(len(thrdtbl)))
+    #print('waitForEveryone2Join:{} >>>'.format(len(thrdtbl)))
 
 def waitForEveryone2Result(me, thrdtbl, vl_numofprcs):
-    if logout:
-        print('waitForEveryone2Result:{} <<<'.format(len(thrdtbl)))
+    #print('waitForEveryone2Result:{} <<<'.format(len(thrdtbl)))
 
     iam = None
     premsg = ''
@@ -370,8 +367,7 @@ def waitForEveryone2Result(me, thrdtbl, vl_numofprcs):
     if iam:
         thrdtbl.append(iam)
 
-    if logout:
-        print('waitForEveryone2Result:{} >>>'.format(len(thrdtbl)))
+    #print('waitForEveryone2Result:{} >>>'.format(len(thrdtbl)))
 
 def waitForEveryone2Nowait(me, thrdtbl, vl_numofprcs):
     premsg = ''
@@ -416,7 +412,8 @@ def start_surf(me, thrdtbl,urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt):
     #print('Start[{}] {}/{}'.format(me, vl_numofprcs.value, maxof))
 
     if maxof < vl_numofprcs.value:
-        print('[{}]Enqueu:{}${}'.format(me, nxturl, nxtcntnt))
+        if logout:
+            print('[{}]Enqueu:{}${}'.format(me, nxturl, nxtcntnt))
         exeque.enque((me, nxturl, tabs, multi, nxtcntnt))
         return False
     else:
@@ -440,7 +437,8 @@ def start_surf(me, thrdtbl,urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt):
             exeque.enque((me, nxturl, tabs, multi, nxtcntnt))
             return False
 
-        print('[{}]execute proc[{}]:{}${}'.format(me,you,nxturl,nxtcntnt))
+        if logout:
+            print('[{}]execute proc[{}]:{}${}'.format(me,you,nxturl,nxtcntnt))
 
         thrdtbl.append((proc, you))
         with vl_numofprcs.get_lock():
@@ -473,7 +471,8 @@ def start_surf(me, thrdtbl,urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt):
                     exeque.enque((me,que[1],que[2],que[3],que[4]))
                     return False
 
-                print('[{}]start deque execute proc[{}]:{}${}'.format(me,you,que[1],que[4]))
+                if logout:
+                    print('[{}]start deque execute proc[{}]:{}${}'.format(me,you,que[1],que[4]))
 
                 thrdtbl.append((proc, you))
                 with vl_numofprcs.get_lock():
@@ -511,7 +510,8 @@ def flush_surf(me, thrdtbl, urllst, multi, vl_numofprcs):
                 que = exeque.deque()
                 continue
 
-        print('[{}]flush start deque execute proc[{}]:{}${}'.format(me,you,que[1],que[4]))
+        if logout:
+            print('[{}]flush start deque execute proc[{}]:{}${}'.format(me,you,que[1],que[4]))
 
         thrdtbl.append((proc, you))
 
@@ -534,7 +534,8 @@ def flush_surf(me, thrdtbl, urllst, multi, vl_numofprcs):
 def surf(me, urllst, url, level, multi, vl_numofprcs, cntnt=""):
     global maxtabs, exectr, maxofprocs, maxofthread, logout, exeque
 
-    print('[{}]surf:{}${}'.format(me,url,cntnt))
+    if logout:
+        print('[{}]surf:{}${}'.format(me,url,cntnt))
 
     logline = ''
 
@@ -591,7 +592,8 @@ def surf(me, urllst, url, level, multi, vl_numofprcs, cntnt=""):
         print('<{}'.format(requrl), file=sys.stderr)
     bftm = tm.time()
     try:
-        print('[{}]urlopen:{}'.format(me,requrl))
+        if logout:
+            print('[{}]urlopen:{}'.format(me,requrl))
         resp = urllib.request.urlopen(requrl, timeout=16)
     except Exception as er:
         #print(' X {}:{}'.format(dlttime(bftm),er))
@@ -686,7 +688,8 @@ def surf(me, urllst, url, level, multi, vl_numofprcs, cntnt=""):
                 nxturl = nxturl.rstrip('/')
 
             if multi != 'none':
-                print('[{}]IN start_surf:{}${}'.format(me,nxturl,nxtcntnt))
+                if logout:
+                    print('[{}]IN start_surf:{}${}'.format(me,nxturl,nxtcntnt))
                 rtn = start_surf(me, thrdtbl,urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt)
                 #print('OUT start_surf[{}]:{}'.format(me,rtn))
 
