@@ -417,7 +417,7 @@ def start_surf(me, thrdtbl,urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt):
             exeque.enque((me, nxturl, tabs, multi, nxtcntnt))
             return False
 
-        print('start surf[{}]proc[{}]:{}${}'.format(me,you,nxturl,nxtcntnt))
+        print('[{}]execute proc[{}]:{}${}'.format(me,you,nxturl,nxtcntnt))
 
         thrdtbl.append((proc, you))
         with vl_numofprcs.get_lock():
@@ -508,11 +508,10 @@ def flush_surf(me, thrdtbl, urllst, multi, vl_numofprcs):
     waitForEveryone2(me,thrdtbl,vl_numofprcs)
 
 
-#def surf(visitedUrls, url, level, multi, vl_numofprcs, cntnt=""):
 def surf(me, urllst, url, level, multi, vl_numofprcs, cntnt=""):
     global maxtabs, exectr, maxofprocs, maxofthread, logout, exeque
 
-    #print('surf[{}]:{}${} tabs:{}/{}'.format(me,url,cntnt,level,maxtabs))
+    print('[{}]surf:{}${}'.format(me,url,cntnt))
 
     logline = ''
 
@@ -564,7 +563,7 @@ def surf(me, urllst, url, level, multi, vl_numofprcs, cntnt=""):
         print('<{}'.format(requrl), file=sys.stderr)
     bftm = tm.time()
     try:
-        print('urlopen[{}]:{}'.format(me,requrl))
+        print('[{}]urlopen:{}'.format(me,requrl))
         resp = urllib.request.urlopen(requrl, timeout=16)
     except Exception as er:
         #print(' X {}:{}'.format(dlttime(bftm),er))
@@ -659,7 +658,7 @@ def surf(me, urllst, url, level, multi, vl_numofprcs, cntnt=""):
                 nxturl = nxturl.rstrip('/')
 
             if multi != 'none':
-                print('IN start_surf[{}]:{}${}'.format(me,nxturl,nxtcntnt))
+                print('[{}]IN start_surf:{}${}'.format(me,nxturl,nxtcntnt))
                 rtn = start_surf(me, thrdtbl,urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt)
                 #print('OUT start_surf[{}]:{}'.format(me,rtn))
 
