@@ -25,19 +25,10 @@ class URLList:
         requrl.strip()
         if 64 < len(requrl):
             tag = mk_hash(requrl)
-            #print('__is_visited tag:{}'.format(self), file=sys.stderr)
-            #print('__is_visited [{}] tag: {}'.format(len(self.visitedUrls),tag), file=sys.stderr)
             if tag in self.visitedUrls:
-                #print(f'Already {requrl}:{tag}', end='')
-                #print('REF True [{}][{}]{}'.format(len(requrl),tag,requrl), file=sys.stderr)
                 return True
-            #print('REF False [{}][{}]{}'.format(len(requrl),tag,requrl))
         else:
-            #print('__is_visited url:{}'.format(self), file=sys.stderr)
-            #print('__is_visited [{}] url: {}'.format(len(self.visitedUrls),requrl), file=sys.stderr)
             if requrl in self.visitedUrls:
-                #print(f'Already {requrl}', end='')
-                #print('REF True [{}]{}'.format(len(requrl),requrl), file=sys.stderr)
                 return True
 
         return False
@@ -46,21 +37,15 @@ class URLList:
         requrl.strip()
         if 64 < len(requrl):
             tag = mk_hash(requrl)
-            #print('__visitor_registration tag:{}:{}'.format(self,len(self.visitedUrls), file=sys.stderr)
             if not tag in self.visitedUrls:
-                #print('__visitor_registration tag: {}'.format(tag), file=sys.stderr)
                 self.visitedUrls.append(tag)
         else:
-            #print('__visitor_registration url:{}:{}'.format(self,len(self.visitedUrls), file=sys.stderr)
             if not requrl in self.visitedUrls:
-                #print('__visitor_registration url: {}'.format(requrl), file=sys.stderr)
                 self.visitedUrls.append(requrl)
-        #print('__visitor_registration last value[{}]: {}'.format(len(self.visitedUrls),self.visitedUrls[-1]), file=sys.stderr)
         pass
 
     def __urllst_queproc(self, reqque, rspque):
         print('Start __urllst_queproc')
-        #print('Start __urllst_queproc', file=sys.stderr)
         while True:
             reqdat = reqque.get()
             if reqdat[0] == 'check':
@@ -107,12 +92,10 @@ class URLList:
             self.urllstreqque.put(('check',me,requrl))
             rsp = self.urllstrspque.get()
             while rsp[0] != me:
-                print("[{}]is_visited resp isn't mine why[{}]".format(me,rsp[0]), file=sys.stderr)
+                errout("[{}]is_visited resp isn't mine why[{}]".format(me,rsp[0]))
                 self.urllstreqque.put(('check',me,requrl))
                 rsp = self.urllstrspque.get()
             return rsp[1]
-            #print('is_visited rsp:{}:{}:{}'.format(type(rsp),dir(rsp),rsp))
-            #return rsp
         pass
 
     #def visitor_registration(self, requrl):
@@ -124,7 +107,7 @@ class URLList:
             self.urllstreqque.put(('regst',me,requrl))
             rsp = self.urllstrspque.get(timeout=3)
             if rsp[0] != me:
-                print("[{}]visitor_registration resp isn't mine why[{}]".format(me,rsp[0]), file=sys.stderr)
+                errout("[{}]visitor_registration resp isn't mine why[{}]".format(me,rsp[0]))
         pass
 
     def procquit(self):
@@ -230,6 +213,19 @@ cntntAttrs = ('.html', '.shtml')
 imageAttrs = ('mailto:', 'javascript:', '.jpg', '.png', '.mpeg', '.img', '.mp4', '.mov',
  '.mp3', '.m4a', '.aiff', '.wav', '.ico', '.css', '.pdf', '.doc', '.docx',
   '.xls')
+
+preerrmsg = ''
+errsprsscnt = 0
+def errout(msg):
+    global preerrmsg, errsprsscnt
+    if preerrmsg != msg:
+        if 0 < errsprsscnt:
+            print('supress {}:{}'.format(errsprsscnt, preerrmsg), file=sys.stderr)
+        print(msg, file=sys.stderr)
+        preerrmsg = msg
+        errsprsscnt = 0
+    else:
+        errsprsscnt += 1
 
 ignorHosts = ('akamai',)
 def ignor_domain(url):
@@ -433,7 +429,7 @@ def start_surf(me, thrdtbl,urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt):
             else:
                 return False
         except Exception as er:
-            print('Creat error[{}] {}:surf[{}${}]'.format(me,er,nxturl,nxtcntnt))
+            errout('[{}]Creat error {}:surf[{}${}]'.format(me,er,nxturl,nxtcntnt))
             exeque.enque((me, nxturl, tabs, multi, nxtcntnt))
             return False
 
@@ -467,7 +463,7 @@ def start_surf(me, thrdtbl,urllst, nxturl, tabs, multi, vl_numofprcs, nxtcntnt):
                     else:
                         return False
                 except Exception as er:
-                    print('Creat error[{}]{}:surf[{}${}]'.format(me,er,que[1],que[4]))
+                    errout('[{}]deque Creat error {}:surf[{}${}]'.format(me,er,que[1],que[4]))
                     exeque.enque((me,que[1],que[2],que[3],que[4]))
                     return False
 
@@ -505,7 +501,7 @@ def flush_surf(me, thrdtbl, urllst, multi, vl_numofprcs):
             else:
                 return False
         except Exception as er:
-                print('Creat error[{}]{}:surf[{}${}]'.format(me,er,que[1],que[4]))
+                errout('[{}]flush start deque Creat error {}:surf[{}${}]'.format(me,er,que[1],que[4]))
                 #exeque.enque((que[0],que[1],que[2],que[3]))
                 que = exeque.deque()
                 continue
@@ -544,16 +540,16 @@ def surf(me, urllst, url, level, multi, vl_numofprcs, cntnt=""):
     tabs = level
 
     if maxtabs <= tabs:
-        print('[{}]level is too deep {}/{}'.format(me,tabs,maxtabs), file=sys.stderr)
+        errout('[{}]level is too deep {}/{}'.format(me,tabs,maxtabs))
         return True
 
     ignr = ignor_domain(url)
     if 0 < len(ignr):
-        print('[{}]Ignor:{} server is {}'.format(me,url,ignr), file=sys.stderr)
+        errout('[{}]Ignor:{} server is {}'.format(me,url,ignr))
         return True
 
     if 0 < len(cntnt) and '#' in cntnt:
-        print('[{}]Ignor name references:{}'.format(me,cntnt), file=sys.stderr)
+        errout('[{}]Ignor name references:{}'.format(me,cntnt))
         return True
 
     tabstr = tabspace(tabs)
@@ -567,12 +563,11 @@ def surf(me, urllst, url, level, multi, vl_numofprcs, cntnt=""):
         chkstr = str.lower(requrl)
         imgfile = chkstr.rfind(imageattr)
         if 0 <= imgfile:
-            print('[{}]Ignor data content:{}'.format(me,requrl), file=sys.stderr)
+            errout('[{}]Ignor data content:{}'.format(me,requrl))
             return True
 
-    #if urllst.is_visited(requrl):
     if urllst.is_visited(me, requrl):
-        print('[{}]Already visited:{}'.format(me,requrl), file=sys.stderr)
+        errout('[{}]Already visited:{}'.format(me,requrl))
         return True
 
     #print('{}{}:'.format(tabstr,tabs), end='')
@@ -588,8 +583,6 @@ def surf(me, urllst, url, level, multi, vl_numofprcs, cntnt=""):
     urllst.visitor_registration(me, requrl)
     tabs += 1
 
-    if logout:
-        print('<{}'.format(requrl), file=sys.stderr)
     bftm = tm.time()
     try:
         if logout:
@@ -602,8 +595,6 @@ def surf(me, urllst, url, level, multi, vl_numofprcs, cntnt=""):
             tabs -= 1
         print(logline)
         return False;
-    if logout:
-        print('>{}'.format(requrl), file=sys.stderr)
 
     for html in cntntAttrs:
         ix = requrl.rfind(html)
