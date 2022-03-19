@@ -64,12 +64,24 @@ class URLList:
         while True:
             reqdat = reqque.get()
             if reqdat[0] == 'check':
+                '''
                 rtn = self.__is_visited(reqdat[1])
                 rspque.put(rtn)
+                '''
+                you = reqdat[1]
+                rtn = self.__is_visited(reqdat[2])
+                rspque.put((you,rtn))
+
                 pass
             elif reqdat[0] == 'regst':
+                '''
                 self.__visitor_registration(reqdat[1])
                 rspque.put('ok')
+                '''
+                you = reqdat[1]
+                self.__visitor_registration(reqdat[2])
+                rspque.put((you,'ok'))
+
                 pass
             elif reqdat[0] == 'quit':
                 break;
@@ -85,23 +97,34 @@ class URLList:
         pass
 
 
-    def is_visited(self, requrl):
+    #def is_visited(self, requrl):
+    def is_visited(self, me, requrl):
         if self.multi == 'none':
             return self.__is_visited(requrl)
         else:
-            self.urllstreqque.put(('check',requrl))
+            #self.urllstreqque.put(('check',requrl))
             #rsp = self.urllstrspque.get(timeout=3)
+            self.urllstreqque.put(('check',me,requrl))
             rsp = self.urllstrspque.get()
+            while rsp[0] != me:
+                print("[{}]is_visited resp isn't mine why[{}]".format(me,rsp[0]), file=sys.stderr)
+                self.urllstreqque.put(('check',me,requrl))
+                rsp = self.urllstrspque.get()
+            return rsp[1]
             #print('is_visited rsp:{}:{}:{}'.format(type(rsp),dir(rsp),rsp))
-            return rsp
+            #return rsp
         pass
 
-    def visitor_registration(self, requrl):
+    #def visitor_registration(self, requrl):
+    def visitor_registration(self, me, requrl):
         if self.multi == 'none':
             self.__visitor_registration(requrl)
         else:
-            self.urllstreqque.put(('regst',requrl))
+            #self.urllstreqque.put(('regst',requrl))
+            self.urllstreqque.put(('regst',me,requrl))
             rsp = self.urllstrspque.get(timeout=3)
+            if rsp[0] != me:
+                print("[{}]visitor_registration resp isn't mine why[{}]".format(me,rsp[0]), file=sys.stderr)
         pass
 
     def procquit(self):
@@ -520,14 +543,16 @@ def surf(me, urllst, url, level, multi, vl_numofprcs, cntnt=""):
     tabs = level
 
     if maxtabs <= tabs:
+        print('[{}]level is too deep {}/{}'.format(me,tabs,maxtabs), file=sys.stderr)
         return True
 
     ignr = ignor_domain(url)
     if 0 < len(ignr):
-        print('Ignor:{} server is {}'.format(url,ignr))
+        print('[{}]Ignor:{} server is {}'.format(me,url,ignr), file=sys.stderr)
         return True
 
     if 0 < len(cntnt) and '#' in cntnt:
+        print('[{}]Ignor name references:{}'.format(me,cntnt), file=sys.stderr)
         return True
 
     tabstr = tabspace(tabs)
@@ -541,10 +566,12 @@ def surf(me, urllst, url, level, multi, vl_numofprcs, cntnt=""):
         chkstr = str.lower(requrl)
         imgfile = chkstr.rfind(imageattr)
         if 0 <= imgfile:
-            return False
+            print('[{}]Ignor data content:{}'.format(me,requrl), file=sys.stderr)
+            return True
 
-    if urllst.is_visited(requrl):
-        #print('Already visited:{}',format(requrl))
+    #if urllst.is_visited(requrl):
+    if urllst.is_visited(me, requrl):
+        print('[{}]Already visited:{}'.format(me,requrl), file=sys.stderr)
         return True
 
     #print('{}{}:'.format(tabstr,tabs), end='')
@@ -556,7 +583,8 @@ def surf(me, urllst, url, level, multi, vl_numofprcs, cntnt=""):
         #print('[{}]/[{}]'.format(url,cntnt), end='', flush=True)
         logline += '[{}]/[{}]'.format(url,cntnt)
 
-    urllst.visitor_registration(requrl)
+    #urllst.visitor_registration(requrl)
+    urllst.visitor_registration(me, requrl)
     tabs += 1
 
     if logout:
