@@ -567,7 +567,7 @@ def surf(me, urllst, url, level, multi, vl_numofprcs, cntnt=""):
             return True
 
     if urllst.is_visited(me, requrl):
-        errout('[{}]Already visited:{}'.format(me,requrl))
+        #errout('[{}]Already visited:{}'.format(me,requrl))
         return True
 
     #print('{}{}:'.format(tabstr,tabs), end='')
